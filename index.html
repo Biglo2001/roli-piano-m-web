@@ -5,18 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ROLI Piano M Synth</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="style-snow.css" />
 </head>
 <body>
+  <div id="snow" aria-hidden="true"></div>
+  <button id="music-toggle" type="button" aria-label="Mute piano" aria-pressed="false">🔊</button>
+  <main class="page-content">
+    <h1>Piano M Web Synth</h1>
+    <p>Play sound from your ROLI Piano M directly in your browser without the app!</p>
 
-  <h1>Piano M Web Synth</h1>
-  <p>Play sound from your ROLI Piano M directly in your browser without the app!</p>
-
-  <div class="status-card">
-    <div id="status">Audio Engine Paused</div>
-    <button id="start-btn">Connect & Start Audio</button>
-    <div id="log">Logs will appear here...</div>
-  </div>
+    <div class="status-card">
+      <div id="status">Audio Engine Paused</div>
+      <button id="start-btn">Connect & Start Audio</button>
+      <div id="log">Logs will appear here...</div>
+    </div>
+  </main>
 
   <script src="script.js"></script>
+  <script src="script-snow.js"></script>
 </body>
 </html>

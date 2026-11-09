@@ -1,0 +1,109 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.page-content {
+  position: relative;
+  z-index: 1;
+  width: 90%;
+  max-width: 500px;
+  min-height: 300px;
+  padding: 40px 30px;
+  border: 2px solid #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+button {
+  color: #fff;
+  background: #000;
+  border: 2px solid #fff;
+  border-radius: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+button:hover {
+  background: #333;
+}
+
+button:active {
+  background: #333;
+}
+
+button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+#music-toggle {
+  position: fixed;
+  z-index: 11;
+  top: 15px;
+  right: 15px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 1.2rem;
+}
+
+#music-toggle:hover {
+  transform: scale(1.08);
+}
+
+#snow {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.snowflake {
+  position: absolute;
+  top: -15px;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  opacity: 0.75;
+  clip-path: polygon(
+    50% 0%,
+    100% 38%,
+    82% 100%,
+    18% 100%,
+    0% 38%
+  );
+  animation: snowfall var(--duration) linear var(--delay) infinite;
+}
+
+@keyframes snowfall {
+  from {
+    transform: translateY(-15px) rotate(0deg);
+  }
+
+  to {
+    transform: translateY(110vh) rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .page-content {
+    width: 100%;
+    padding: 55px 20px 30px;
+  }
+}

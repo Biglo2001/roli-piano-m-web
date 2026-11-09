@@ -1,4 +1,6 @@
 let audioCtx = null;
+let masterGain = null;
+let isMuted = false;
 const activeOscillators = {};
 
 const statusEl = document.getElementById('status');
@@ -19,6 +21,9 @@ function midiToFreq(note) {
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = isMuted ? 0 : 1;
+    masterGain.connect(audioCtx.destination);
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
@@ -101,7 +106,7 @@ function playNote(note, velocity) {
   gain.gain.setValueAtTime(volume, audioCtx.currentTime);
 
   osc.connect(gain);
-  gain.connect(audioCtx.destination);
+  gain.connect(masterGain);
 
   osc.start();
   activeOscillators[note] = { osc, gain };
@@ -123,3 +128,15 @@ function stopNote(note) {
 }
 
 startBtn.addEventListener('click', initAudio);
+
+window.addEventListener('piano-mute-change', (event) => {
+  isMuted = event.detail.muted;
+
+  if (masterGain) {
+    masterGain.gain.setTargetAtTime(
+      isMuted ? 0 : 1,
+      audioCtx.currentTime,
+      0.015
+    );
+  }
+});
