@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROLI Piano M Synth</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #121212;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    h1 { margin-bottom: 8px; color: #ff3b30; }
+    p { color: #aaa; font-size: 14px; max-width: 400px; }
+    .status-card {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 400px;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    button {
+      background: #007aff;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+      width: 100%;
+    }
+    button:active { background: #0056b3; }
+    #log {
+      margin-top: 15px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #34c759;
+      text-align: left;
+      max-height: 120px;
+      overflow-y: auto;
+      background: #000;
+      padding: 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Piano M Web Synth</h1>
+  <p>Play sound from your ROLI Piano M directly in your browser without the app!</p>
+
+  <div class="status-card">
+    <div id="status">Audio Engine Paused</div>
+    <button id="start-btn">Connect & Start Audio</button>
+    <div id="log">Logs will appear here...</div>
+  </div>
+
+  <script>
+    let audioCtx = null;
+    const activeOscillators = {};
+
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const startBtn = document.getElementById('start-btn');
+
+    function log(msg) {
+      logEl.innerHTML += `<div>${msg}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Convert MIDI Note number to Hz frequency
+    function midiToFreq(note) {
+      return 440 * Math.pow(2, (note - 69) / 12);
+    }
+
+    // Initialize Audio Context on user interaction (Android requirement)
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      statusEl.innerText = "Audio Ready. Requesting MIDI...";
+      log("AudioContext activated.");
+      initMIDI();
+    }
+
+    // Request Web MIDI Access
+    function initMIDI() {
+      if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+      } else {
+        statusEl.innerText = "Web MIDI API not supported in this browser.";
+        log("Error: Web MIDI API unavailable.");
+      }
+    }
+
+    function onMIDISuccess(midiAccess) {
+      statusEl.innerText = "MIDI Connected! Play your Piano M.";
+      log("MIDI Access granted.");
+
+      const inputs = midiAccess.inputs.values();
+      let deviceFound = false;
+
+      for (let input of inputs) {
+        deviceFound = true;
+        log(`Found device: ${input.name}`);
+        input.onmidimessage = handleMIDIMessage;
+      }
+
+      if (!deviceFound) {
+        log("No MIDI device detected. Plug in your ROLI Piano M via USB OTG.");
+      }
+
+      midiAccess.onstatechange = (e) => {
+        log(`Device state changed: ${e.port.name} (${e.port.state})`);
+        if (e.port.state === 'connected') {
+          e.port.onmidimessage = handleMIDIMessage;
+        }
+      };
+    }
+
+    function onMIDIFailure(err) {
+      statusEl.innerText = "MIDI Access Denied or Failed.";
+      log(`Failed to get MIDI access: ${err}`);
+    }
+
+    // Parse raw MIDI events (Note On / Note Off)
+    function handleMIDIMessage(event) {
+      const [statusByte, note, velocity] = event.data;
+      const command = statusByte >> 4;
+
+      // Note On event (Command 9)
+      if (command === 9 && velocity > 0) {
+        playNote(note, velocity);
+      } 
+      // Note Off event (Command 8 or Command 9 with 0 velocity)
+      else if (command === 8 || (command === 9 && velocity === 0)) {
+        stopNote(note);
+      }
+    }
+
+    // Polyphonic Sound Synthesizer
+    function playNote(note, velocity) {
+      if (activeOscillators[note]) {
+        stopNote(note); // Stop old note if duplicate
+      }
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      // Soft triangle wave for synth/piano sound
+      osc.type = 'triangle'; 
+      osc.frequency.setValueAtTime(midiToFreq(note), audioCtx.currentTime);
+
+      // Map velocity (0-127) to gain volume
+      const volume = (velocity / 127) * 0.5;
+      gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      activeOscillators[note] = { osc, gain };
+      log(`Note ON: ${note} (Vol: ${velocity})`);
+    }
+
+    function stopNote(note) {
+      if (activeOscillators[note]) {
+        const { osc, gain } = activeOscillators[note];
+        // Fast release to prevent click sounds
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+        setTimeout(() => {
+          osc.stop();
+          osc.disconnect();
+        }, 80);
+        delete activeOscillators[note];
+        log(`Note OFF: ${note}`);
+      }
+    }
+
+    startBtn.addEventListener('click', initAudio);
+  </script>
+</body>
+</html>
